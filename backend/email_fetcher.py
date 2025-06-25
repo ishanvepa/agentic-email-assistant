@@ -1,14 +1,23 @@
+import base64
 import sys
 import os.path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../')))
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from email_types import Email
+from langchain_core.tools import tool 
 
 # If modifying SCOPES, delete the token.json file.
 SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
+
+def decode_base64url(data):
+    try:
+        return base64.urlsafe_b64decode(data + '=' * (-len(data) % 4)).decode('utf-8')
+    except Exception as e:
+        print(f"Failed to decode email body: {e}")
+        return ''
 
 def authenticate_gmail():
     """Authenticate and return a Gmail API service."""
@@ -30,10 +39,20 @@ def authenticate_gmail():
     service = build('gmail', 'v1', credentials=creds)
     return service
 
-def fetch_k_emails(k=5):
-    """Fetch and return the last k emails as a list of Email objects."""
+@tool
+def fetch_k_emails(k=5, keywords=None):
+    """
+    Fetch and return the last k emails that contain any of the given keywords in the subject or body.
+    Returns a list of Email objects.
+    """
     service = authenticate_gmail()
-    results = service.users().messages().list(userId='me', maxResults=k).execute()
+    query = ''
+    if keywords and isinstance(keywords, list):
+        # Gmail search uses OR with parentheses for multiple keywords
+        query = '({})'.format(' OR '.join(keywords))
+    elif keywords:
+        query = str(keywords)
+    results = service.users().messages().list(userId='me', maxResults=k, q=query).execute()
     messages = results.get('messages', [])
 
     email_list = []
@@ -52,10 +71,12 @@ def fetch_k_emails(k=5):
         if 'parts' in payload:
             for part in payload['parts']:
                 if part.get('mimeType') == 'text/plain':
-                    body = part.get('body', {}).get('data', '')
+                    body_data = part.get('body', {}).get('data', '')
+                    body = decode_base64url(body_data)
                     break
         elif payload.get('mimeType') == 'text/plain':
-            body = payload.get('body', {}).get('data', '')
+            body_data = payload.get('body', {}).get('data', '')
+            body = decode_base64url(body_data)
         date = next((h['value'] for h in headers if h['name'] == 'Date'), None)
         email_obj = Email(subject=subject, sender=sender, body=body, date=date, id=msg['id'])
         email_list.append(email_obj)
@@ -64,4 +85,5 @@ def fetch_k_emails(k=5):
 
 if __name__ == '__main__':
     # service = authenticate_gmail()
-    fetch_k_emails(10)
+    query = ['meeting', 'zoom', 'schedule', 'calendar', 'invite', 'appointment', 'availability', 'time to meet', 'set up a meeting', 'meeting request', 'meeting inquiry']
+    fetch_k_emails(10, query)
