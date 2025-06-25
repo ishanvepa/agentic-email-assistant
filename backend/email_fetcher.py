@@ -43,7 +43,13 @@ def authenticate_gmail():
 def fetch_k_emails(k=5, keywords=None):
     """
     Fetch and return the last k emails that contain any of the given keywords in the subject or body.
-    Returns a list of Email objects.
+
+    Args:
+        k (int): Number of recent emails to fetch. Defaults to 5.
+        keywords (list[str]): Keywords to filter emails by. If not provided, fetches the most recent emails.
+
+    Returns:
+        list[Email]: A list of Email objects, each containing subject, sender, body, date, and ID.
     """
     service = authenticate_gmail()
     query = ''
@@ -78,12 +84,20 @@ def fetch_k_emails(k=5, keywords=None):
             body_data = payload.get('body', {}).get('data', '')
             body = decode_base64url(body_data)
         date = next((h['value'] for h in headers if h['name'] == 'Date'), None)
-        email_obj = Email(subject=subject, sender=sender, body=body, date=date, id=msg['id'])
-        email_list.append(email_obj)
-    print(email_list)
+        # email_obj = Email(subject=subject, sender=sender, body=body, date=date, id=msg['id'])
+        # email_list.append(email_obj)
+        email_dict = {
+            'subject': subject,
+            'sender': sender,
+            'body': body,
+            'date': date,
+            'id': msg['id']
+        }
+        email_list.append(email_dict)
+    # print(email_list)
     return email_list
 
-if __name__ == '__main__':
-    # service = authenticate_gmail()
-    query = ['meeting', 'zoom', 'schedule', 'calendar', 'invite', 'appointment', 'availability', 'time to meet', 'set up a meeting', 'meeting request', 'meeting inquiry']
-    fetch_k_emails(10, query)
+# if __name__ == '__main__':
+#     # service = authenticate_gmail()
+#     query = ['meeting', 'zoom', 'schedule', 'calendar', 'invite', 'appointment', 'availability', 'time to meet', 'set up a meeting', 'meeting request', 'meeting inquiry']
+#     fetch_k_emails(10, query)

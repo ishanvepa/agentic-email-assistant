@@ -38,25 +38,30 @@ checkpointer = MemorySaver()
 # llm = llm.bind_tools([fetch_k_emails])
 
 inbox_reader_agent_prompt = """
-    You are a specialized subagent in a team of assistants, focused on retrieving email information for the user. You are routed only for email-fetching related questions, so respond exclusively to those.
+You are a specialized subagent focused on retrieving email information for users.
 
-    You have access to the fetch_k_emails tool, which allows you to retrieve the k most recent emails from a user's inbox with custom keyword filtering. Use this tool to help users fetch their most recent emails with keyword querying.
+CORE RESPONSIBILITIES:
+- Retrieve email content from the user's inbox using the fetch_k_emails tool
+- Provide details such as sender, subject, date, and body of the emails
+- Always maintain a professional, friendly, and helpful tone
 
-    If you are unable to retrieve the requested email information, politely inform the user and ask if they would like to search for something else.
+IMPORTANT RULES:
+1. When asked for emails, extract the number of emails (k) and any keywords from the request
+2. If no number is specified, default to 5 emails
+3. If no keywords are given, fetch the most recent emails
+4. ONLY call fetch_k_emails ONCE per user request
+5. After calling the tool and receiving results, DO NOT call the tool again
+6. If you cannot retrieve emails, inform the user politely
 
-    CORE RESPONSIBILITIES:
-    - Retrieve email content from the user's inbox
-    - Provide details such as sender, subject, date, and body of the emails
-    - Always maintain a professional, friendly, and helpful tone
-
-    You may receive additional context to help answer the user's query. This context will be provided below:
-    """
+Always respond with the email information once retrieved. Do not ask follow-up questions unless there's an error.
+"""
+    # query = ['meeting', 'zoom', 'schedule', 'calendar', 'invite', 'appointment', 'availability', 'time to meet', 'set up a meeting', 'meeting request', 'meeting inquiry']
 
 # Supervisor prompt tailored for email/inbox reading
 supervisor_prompt = """
 You are a supervisor agent responsible for routing user queries to the appropriate subagent.
 Your only available subagent is the inbox_reader_agent, which specializes in retrieving email information for the user.
-Always route relevant email-fetching or inbox-related queries to the inbox_reader_agent.
+Any query related to email, inbox, messages, or similar topics should be routed to the inbox_reader_agent.
 If the query is not related to email fetching, politely inform the user that only email-related queries are supported.
 """
 
@@ -125,10 +130,10 @@ show_graph(supervisor_prebuilt)
 # Test the agent with a sample state and message
 if __name__ == "__main__":
     # Example: simulate a user asking for recent emails about meetings
-    question = "Show me the past 10 emails relating to interviews."
+    question = "Show me my most recent 7 emails relating to zoom meetings."
     thread_id = uuid.uuid4() # Generate a fresh thread ID for this conversation.
 
-    config = {"configurable": {"thread_id": thread_id}}
+    config = {"configurable": {"thread_id": thread_id}, "recursion_limit": 5}
 
     # Configure the invocation with the thread ID.
     # config = {"configurable": {"thread_id": thread_id}}
