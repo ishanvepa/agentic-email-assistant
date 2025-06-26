@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, date
 from langchain_core.messages import HumanMessage
 from langgraph.graph import StateGraph, START, END # Core LangGraph classes and special node names
 from utils import show_graph # Utility function to visualize the graph (assumed to be in a utils.py file)
@@ -47,7 +47,7 @@ CORE RESPONSIBILITIES:
 - Always maintain a professional, friendly, and helpful tone
 
 IMPORTANT RULES:
-1. ONLY handle requests to fetch, receive, or show emails, NOT to summarize or extract key points (summarization is handled by the email_summarizer_agent)
+1. ONLY handle requests to fetch, receive, or show emails, NOT to summarize or schedule meetings, that is done by the email_summarizer_agent and event_scheduler_agent respectively.
 2. When asked for emails, extract the number of emails (k) and any keywords from the request
 3. If no number of emails is specified, default to 5 emails
 4. If no keywords are given, fetch the most recent emails
@@ -104,12 +104,16 @@ After using the summarize_emails tool, present the results clearly with:
 Always respond with the email summary once generated. Do not ask follow-up questions unless there's an error or missing information.
 """
 
-event_scheduler_agent_prompt = """
+event_scheduler_agent_prompt = f"""
 You are a specialized subagent responsible for scheduling events on the user's Google Calendar.
 You will determine whether to schedule an event based on the user's request.
 You may also be given a list of emails, and you must extract relevant information to schedule an event.
 You may schedule an event in the range from 9am - 5pm on weekdays for a duration of 1 hour.
-You get to choose when to schedule the event, but you must run the check_google_calendar_availability tool to ensure the time slot is available.
+If a date or time is specified, you will use that to schedule the event.
+If no date or time is specified you get to choose when to schedule the event, but you must run the check_google_calendar_availability tool to ensure the time slot is available.
+If no title is specified, you will use a default title like "Meeting" or "Event".
+If no description is specified, you will use a default description like "Scheduled meeting" or "Event discussion".
+If no attendees are specified, you will assume only the user is attending.
 You will use the schedule_google_calendar_event tool to create calendar events.
 When scheduling an event, you must provide:
 - A summary (title) for the event
@@ -119,6 +123,7 @@ When scheduling an event, you must provide:
 
 EXPECTED INPUT:
 - You will receive requests like "schedule an event for next week", "set up a meeting with John tomorrow at 2pm", or "create a calendar event for my project discussion".
+- If the user asks a relative time like "next week" or "tomorrow", use {str(datetime.now())} as the current date and {str(date.today().day)} as the current day of the week as reference.
 - You may also be given a list of emails and asked to schedule a meeting based on their content.
 
 IMPORTANT RULES:
@@ -141,13 +146,14 @@ Always respond clearly and concisely. Do not ask unnecessary follow-up questions
 
 
 # Supervisor prompt tailored for email/inbox reading
-supervisor_prompt = """
+supervisor_prompt = f"""
 You are a supervisor agent responsible for managing multiple AI agents.
 You have a team of three subagents that you can use to answer requests from the user.
 The subagents are the inbox_reader_agent, the email_summarizer_agent, and the event_scheduler_agent.
 The inbox_reader_agent can retrieve the last k emails from the user's inbox or search for emails based on the query.
 The email_summarizer_agent takes in a list of emails and summarizes their content into a list of bullet points.
 The event_scheduler_agent can schedule events on the user's Google Calendar based on requests or email content.
+For the event_scheduler_agent, if the user asks a relative time like "next week" or "tomorrow", use {str(datetime.now())} as the current date and {str(date.today().day)} as the current day of the week as reference.
 Use `inbox_reader_agent` when the user asks to "fetch", "show, or "list out" or something similar relating to retrieving emails.
 If the user asks for summarizing emails, route the query to the email_summarizer_agent to process the fetched emails from the inbox_reader_agent.
 
@@ -159,11 +165,13 @@ The supervisor must always route requests to inbox_reader_agent first to fetch e
 You must only use the subagents in the following orders: 
 inbox_reader_agent -> email_summarizer_agent -> event_scheduler_agent
 inbox_reader_agent -> event_scheduler_agent
+ 
 You must not use the agents in any other order.
 
 You must only ask the inbox_reader_agent to fetch or search for emails and nothing else.
 You must only ask the email_summarizer_agent to summarize emails and nothing else.
 You must only ask the event_scheduler_agent to schedule events and nothing else.
+Do not directly call any of the tools in the subagents, only route requests and args to the subagents.
 If something is not possible or lacking detail, explain why in as much detail as possible to the user.
 """
 
@@ -237,23 +245,38 @@ if __name__ == "__main__":
         "Set up a project discussion for next week.",
         "Create a calendar event for my team on Friday at 10am.",
         "Schedule an event for next Monday about the budget review.",
-        "Arrange a call with Alice and Bob this Thursday afternoon.",
+        "Arrange a call with Alice and Bob next Thursday afternoon.",
         "Book a meeting for me and my manager next Wednesday.",
         "Set up a 1-hour meeting with the product team next week.",
         "Schedule a follow-up event based on my recent emails.",
         "Create a Google Calendar event for my project kickoff.",
         "Find a time to meet with Sarah and schedule it on my calendar."
     ]
+
+    # Prompts that require both email parsing and event scheduling
+    email_event_prompts = [
+        "Fetch my emails about meetings this week and schedule a meeting based on them.",
+        "Get the latest emails mentioning project deadlines and set up a calendar event for the next review.",
+        "Find emails about interviews and schedule an interview event with the mentioned participants.",
+        "Summarize my recent emails about team syncs and arrange a meeting accordingly.",
+        "Check emails about budget discussions and schedule a follow-up meeting.",
+        "Fetch emails from Alice about the workshop and create a calendar event for it.",
+        "Get emails mentioning 'demo' and schedule a demo session with the attendees.",
+        "Find emails about client calls and book a meeting with the clients.",
+        "Summarize emails about onboarding and set up an onboarding event.",
+        "Fetch emails about training sessions and schedule the next session on my calendar.",
+        "Find any emails that include event or meeting invitations and add them to my calendar"
+    ]
   
     thread_id = uuid.uuid4() # Generate a fresh thread ID for this conversation.
 
-    config = {"configurable": {"thread_id": thread_id}, "recursion_limit": 10, "verbose": True}
+    config = {"configurable": {"thread_id": thread_id}, "recursion_limit": 20, "verbose": True}
 
     # Configure the invocation with the thread ID.
     # config = {"configurable": {"thread_id": thread_id}}
     # The supervisor agent expects a state input
     # result = supervisor_prebuilt.invoke({"messages": [HumanMessage(content=sample_prompts[10])]}, config=config)
-    result = supervisor_prebuilt.invoke({"messages": [HumanMessage(content=event_scheduler_prompts[0])]}, config=config)
+    result = supervisor_prebuilt.invoke({"messages": [HumanMessage(content=email_event_prompts[3])]}, config=config)
 
     print("Agent output:")
     for message in result["messages"]:
