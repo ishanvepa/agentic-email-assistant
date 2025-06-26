@@ -40,24 +40,35 @@ def authenticate_gmail():
     return service
 
 @tool
-def fetch_k_emails(k=5, keywords=None):
+def fetch_k_emails(k=5, keywords=None, after=None, before=None):
     """
-    Fetch and return the last k emails that contain any of the given keywords in the subject or body.
+    Fetch and return the last k emails that contain any of the given keywords in the subject or body,
+    optionally filtered by date/time.
 
     Args:
         k (int): Number of recent emails to fetch. Defaults to 5.
         keywords (list[str]): Keywords to filter emails by. If not provided, fetches the most recent emails.
+        after (str): Only include emails after this date (YYYY/MM/DD or epoch seconds).
+        before (str): Only include emails before this date (YYYY/MM/DD or epoch seconds).
 
     Returns:
         list[Email]: A list of Email objects, each containing subject, sender, body, date, and ID.
     """
     service = authenticate_gmail()
-    query = ''
+    query_parts = []
+
     if keywords and isinstance(keywords, list):
-        # Gmail search uses OR with parentheses for multiple keywords
-        query = '({})'.format(' OR '.join(keywords))
+        query_parts.append('({})'.format(' OR '.join(keywords)))
     elif keywords:
-        query = str(keywords)
+        query_parts.append(str(keywords))
+
+    if after:
+        query_parts.append(f'after:{after}')
+    if before:
+        query_parts.append(f'before:{before}')
+
+    query = ' '.join(query_parts)
+
     results = service.users().messages().list(userId='me', maxResults=k, q=query).execute()
     messages = results.get('messages', [])
 
@@ -84,8 +95,6 @@ def fetch_k_emails(k=5, keywords=None):
             body_data = payload.get('body', {}).get('data', '')
             body = decode_base64url(body_data)
         date = next((h['value'] for h in headers if h['name'] == 'Date'), None)
-        # email_obj = Email(subject=subject, sender=sender, body=body, date=date, id=msg['id'])
-        # email_list.append(email_obj)
         email_dict = {
             'subject': subject,
             'sender': sender,
@@ -94,7 +103,6 @@ def fetch_k_emails(k=5, keywords=None):
             'id': msg['id']
         }
         email_list.append(email_dict)
-    # print(email_list)
     return email_list
 
 # if __name__ == '__main__':
