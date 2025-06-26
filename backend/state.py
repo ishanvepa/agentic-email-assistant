@@ -1,5 +1,5 @@
 from typing_extensions import TypedDict # For defining dictionaries with type hints
-from typing import Annotated, List # For type hinting lists and adding annotations
+from typing import Annotated, List, Optional, Dict, Any # For type hinting lists, optionals, and adding annotations
 from langgraph.graph.message import AnyMessage, add_messages # type: ignore # For managing messages in the graph state
 from langgraph.managed.is_last_step import RemainingSteps # For tracking recursion limits
 
@@ -19,3 +19,5 @@ class State(TypedDict):
     # remaining_steps: Used by LangGraph to track the number of allowed steps 
     # to prevent infinite loops in cyclic graphs.
     remaining_steps: RemainingSteps 
+
+    # emails: Optional[List[Dict[str, Any]]] 

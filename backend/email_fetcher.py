@@ -6,11 +6,10 @@ from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
-from email_types import Email
 from langchain_core.tools import tool 
 
 # If modifying SCOPES, delete the token.json file.
-SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
+SCOPES = ['https://www.googleapis.com/auth/gmail.readonly', 'https://www.googleapis.com/auth/calendar']
 
 def decode_base64url(data):
     try:
@@ -40,34 +39,23 @@ def authenticate_gmail():
     return service
 
 @tool
-def fetch_k_emails(k=5, keywords=None, after=None, before=None):
+def fetch_k_emails(k=5, query=None, after=None, before=None, unread_only=False):
     """
-    Fetch and return the last k emails that contain any of the given keywords in the subject or body,
-    optionally filtered by date/time.
+    Fetch and return the last k emails that contain any of the given query in the subject or body,
+    optionally filtered by date/time and unread status.
+    This tool is only to be called by the inbox_reader_agent agent.
 
     Args:
-        k (int): Number of recent emails to fetch. Defaults to 5.
-        keywords (list[str]): Keywords to filter emails by. If not provided, fetches the most recent emails.
+        k (int): Number of recent emails to fetch. If not specified, defaults to 5.
+        query (str): query to filter emails by. If not provided, fetches the most recent emails.
         after (str): Only include emails after this date (YYYY/MM/DD or epoch seconds).
         before (str): Only include emails before this date (YYYY/MM/DD or epoch seconds).
+        unread_only (bool): If True, only fetch unread emails.
 
     Returns:
-        list[Email]: A list of Email objects, each containing subject, sender, body, date, and ID.
+        list[dict[str, str]]: The emails as a list of dictionaries, each containing subject, sender, body, date, and ID.
     """
     service = authenticate_gmail()
-    query_parts = []
-
-    if keywords and isinstance(keywords, list):
-        query_parts.append('({})'.format(' OR '.join(keywords)))
-    elif keywords:
-        query_parts.append(str(keywords))
-
-    if after:
-        query_parts.append(f'after:{after}')
-    if before:
-        query_parts.append(f'before:{before}')
-
-    query = ' '.join(query_parts)
 
     results = service.users().messages().list(userId='me', maxResults=k, q=query).execute()
     messages = results.get('messages', [])
@@ -75,6 +63,7 @@ def fetch_k_emails(k=5, keywords=None, after=None, before=None):
     email_list = []
     if not messages:
         print("No messages found.")
+        print(f"Parameters used: k={k}, query={query}, after={after}, before={before}, unread_only={unread_only}")
         return email_list
     for msg in messages:
         msg_data = service.users().messages().get(userId='me', id=msg['id']).execute()
@@ -103,9 +92,14 @@ def fetch_k_emails(k=5, keywords=None, after=None, before=None):
             'id': msg['id']
         }
         email_list.append(email_dict)
-    return email_list
+        # print(f"\nEmail ID: {email_dict['id']}")
+        # print(f"From: {email_dict['sender']}")
+        # print(f"Subject: {email_dict['subject']}")
+        # print(f"Date: {email_dict['date']}")
+        # print(f"Body:\n{email_dict['body']}\n{'-'*40}")
+    return {"emails": email_list}
 
 # if __name__ == '__main__':
 #     # service = authenticate_gmail()
 #     query = ['meeting', 'zoom', 'schedule', 'calendar', 'invite', 'appointment', 'availability', 'time to meet', 'set up a meeting', 'meeting request', 'meeting inquiry']
-#     fetch_k_emails(10, query)
+#     fetch_k_emails(10, query[8], unread_only=False)

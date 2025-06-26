@@ -1,3 +1,4 @@
+from datetime import datetime
 from langchain_core.messages import HumanMessage
 from langgraph.graph import StateGraph, START, END # Core LangGraph classes and special node names
 from utils import show_graph # Utility function to visualize the graph (assumed to be in a utils.py file)
@@ -15,7 +16,7 @@ from state import State
 #tool imports
 from email_fetcher import fetch_k_emails
 from summarizer import summarize_emails
-
+from event_scheduler import check_google_calendar_availability, schedule_google_calendar_event
 
 # Load environment variables from the .env file. The `override=True` argument   
 # ensures that variables from the .env file will overwrite existing environment variables.
@@ -23,7 +24,7 @@ load_dotenv(override=True)
 
 # Initialize the ChatOpenAI model. We're using a specific model from Llama 3.3 series.
 # This `model` object will be used throughout the notebook for all LLM interactions.
-llm = ChatOpenAI(model_name="meta-llama/Llama-3.3-70B-Instruct", temperature=0)
+llm = ChatOpenAI(model_name="meta-llama/Llama-3.3-70B-Instruct", temperature=0, verbose=True)
 
 
 # Initializing `InMemoryStore` for long-term memory.
@@ -37,53 +38,62 @@ checkpointer = MemorySaver()
 # bind tools
 # llm = llm.bind_tools([fetch_k_emails])
 
-inbox_reader_agent_prompt = """
-You are a specialized subagent focused on retrieving email information for users.
+inbox_reader_agent_prompt = f"""
+You are a specialized subagent focused on retrieving a list of emails for the user.
 
 CORE RESPONSIBILITIES:
 - Retrieve email content from the user's inbox using the fetch_k_emails tool
-- Provide details such as sender, subject, date, and body of the emails
+- You will return details such as sender, subject, date, and body of the emails
 - Always maintain a professional, friendly, and helpful tone
 
 IMPORTANT RULES:
-1. ONLY handle requests to fetch or list emails, NOT to summarize or extract key points (summarization is handled by the email_summarizer_agent)
+1. ONLY handle requests to fetch, receive, or show emails, NOT to summarize or extract key points (summarization is handled by the email_summarizer_agent)
 2. When asked for emails, extract the number of emails (k) and any keywords from the request
-3. If no number is specified, default to 5 emails
+3. If no number of emails is specified, default to 5 emails
 4. If no keywords are given, fetch the most recent emails
-5. ONLY call fetch_k_emails ONCE per user request
-6. After calling the tool and receiving results, DO NOT call the tool again
-7. If you cannot retrieve emails, inform the user politely
+5. If no date range is specified, fetch the most recent emails
+6. If no unread status is specified, fetch all emails
+7. ONLY call the fetch_k_emails tool ONCE per user request
+8. You may receive requests like "fetch my emails about meetings", "summarize my emails mentioning invoices", or "give me key points from my recent emails".
+You are to query the topics mentioned in the request to fetch the relevant emails.
+9. If the user provides a month and day but a year is not given, default to the current year
+10. After calling the tool and receiving results, DO NOT call the tool again
+11. If you cannot find any emails, inform the user politely and explain why
+12. If a date range is provided without a year, default to the year {datetime.now().year}
+
+if you receive a request requiring fetching and summarizing, just fetch the emails and let the email_summarizer_agent handle the summarization.
 
 RESPONSE FORMAT:
 After using the fetch_k_emails tool, present the results clearly with:
 - A brief introduction (e.g., "Here are the emails I found:")
-- For each email, display the sender, subject, date, and a short snippet or the body
+- For each email, display the sender, subject, date, and a brief snippet of the body
 - Separate each email with a line or bullet for clarity
 
-Always respond with the email information once retrieved. Do not ask follow-up questions unless there's an error. If the user asks for a summary or key points, do not handle it and let the email_summarizer_agent respond.
+Always respond with the email information once retrieved. Do not ask follow-up questions. 
+If the user asks for a summary or key points, DO NOT handle it and let the email_summarizer_agent respond.
 """
 # query = ['meeting', 'zoom', 'schedule', 'calendar', 'invite', 'appointment', 'availability', 'time to meet', 'set up a meeting', 'meeting request', 'meeting inquiry']
 
 email_summarizer_agent_prompt = """
-You are a specialized subagent focused on summarizing email content for users.
+You are a specialized subagent responsible for summarizing email content the user.
 
 CORE RESPONSIBILITIES:
-- Take email data and create concise, actionable summaries
-- Extract key information from multiple emails into digestible bullet points
-- Maintain clarity and relevance in all summaries
-- Always maintain a professional, helpful tone
+You will be given a list of emails, and must create concise summaries using the summarize_emails tool.
+Your objective is to extract key information from these emails into digestible bullet points.
+Always maintain clarity and relevance in all summaries.
+Always maintain a professional, helpful tone.
 
 IMPORTANT RULES:
-1. When asked to summarize emails, extract the number of bullet points requested (max_bullets)
-2. If no number is specified, default to 5 bullet points
-3. ONLY call summarize_emails ONCE per user request
-4. After calling the tool and receiving results, provide the summary and DO NOT call the tool again
-5. If you cannot summarize the emails, inform the user politely and explain why
-6. Focus on the most important and actionable information from the emails
+1. When asked to summarize emails, unless a number of bullet points is specified, summarize emails into at most 5 bullet points
+2. ONLY call summarize_emails ONCE per user request
+3. After calling the tool and receiving results, provide the summary and DO NOT call the tool again
+4. If you cannot summarize the emails, inform the user politely and explain why
+5. Focus on the most important and actionable information from the emails
 
 EXPECTED INPUT:
-- You will receive requests like "summarize these emails", "give me bullet points of my emails", "what are the key points from my inbox"
+- You will receive requests like "summarize these emails", "give me bullet points of my emails", "what are the key points from my inbox" 
 - The user may specify a number of bullet points they want (e.g., "give me 3 key points")
+- If the user does not specify a number, default to 5 bullet points
 
 RESPONSE FORMAT:
 After using the summarize_emails tool, present the results clearly with:
@@ -94,39 +104,69 @@ After using the summarize_emails tool, present the results clearly with:
 Always respond with the email summary once generated. Do not ask follow-up questions unless there's an error or missing information.
 """
 
+event_scheduler_agent_prompt = """
+You are a specialized subagent responsible for scheduling events on the user's Google Calendar.
+You will determine whether to schedule an event based on the user's request.
+You may also be given a list of emails, and you must extract relevant information to schedule an event.
+You may schedule an event in the range from 9am - 5pm on weekdays for a duration of 1 hour.
+You get to choose when to schedule the event, but you must run the check_google_calendar_availability tool to ensure the time slot is available.
+You will use the schedule_google_calendar_event tool to create calendar events.
+When scheduling an event, you must provide:
+- A summary (title) for the event
+- A description of the event
+- Start and end times (as datetime objects)
+- A list of attendees' email addresses (if applicable)
 
-# Supervisor prompt tailored for email/inbox reading
-supervisor_prompt = """
-You are a supervisor agent responsible for managing multiple AI agents. routing user queries to the appropriate subagent.
-Your only available subagents are the inbox_reader_agent, which specializes in retrieving email information for the user, and the email_summarizer_agent, which focuses on summarizing email content.
-Any query related to email, inbox, messages, or similar topics should be routed to the inbox_reader_agent.
-If the query is not related to email fetching, politely inform the user that only email-related queries are supported.
-if the user asks for summarizing emails, route the query to the email_summarizer_agent once emails have been fetched.
-email_summarizer_agent should only ever be called after the inbox_reader_agent has fetched the emails.
+EXPECTED INPUT:
+- You will receive requests like "schedule an event for next week", "set up a meeting with John tomorrow at 2pm", or "create a calendar event for my project discussion".
+- You may also be given a list of emails and asked to schedule a meeting based on their content.
+
+IMPORTANT RULES:
+1. ONLY use the schedule_google_calendar_event tool to create events.
+2. ALWAYS check for calendar availability before scheduling by using the check_google_calendar_availability tool.
+3. If the user does not specify a time, suggest a time within 9am-5pm on a weekday.
+4. If the user does not specify a duration, default to 1 hour.
+5. If the user does not specify attendees, assume only the user is attending.
+6. If the event cannot be scheduled due to conflicts, automatically scheudle it for the next available time slot within the 9am-5pm range on a weekday.
+7. After scheduling, confirm the event details to the user.
+
+RESPONSE FORMAT:
+After scheduling, respond with:
+- A confirmation message (e.g., "Your event has been scheduled.")
+- The event summary, date, time, and attendees
+- Any relevant context or next steps
+
+Always respond clearly and concisely. Do not ask unnecessary follow-up questions.
 """
 
 
+# Supervisor prompt tailored for email/inbox reading
+supervisor_prompt = """
+You are a supervisor agent responsible for managing multiple AI agents.
+You have a team of three subagents that you can use to answer requests from the user.
+The subagents are the inbox_reader_agent, the email_summarizer_agent, and the event_scheduler_agent.
+The inbox_reader_agent can retrieve the last k emails from the user's inbox or search for emails based on the query.
+The email_summarizer_agent takes in a list of emails and summarizes their content into a list of bullet points.
+The event_scheduler_agent can schedule events on the user's Google Calendar based on requests or email content.
+Use `inbox_reader_agent` when the user asks to "fetch", "show, or "list out" or something similar relating to retrieving emails.
+If the user asks for summarizing emails, route the query to the email_summarizer_agent to process the fetched emails from the inbox_reader_agent.
 
+You may receive requests like "fetch my emails about meetings", "summarize my emails mentioning invoices", or "give me key points from my recent emails".
+You are to send the topics as a keyword query mentioned to instruct the inbox_reader_agent to fetch the relevant emails.
 
+The supervisor must always route requests to inbox_reader_agent first to fetch emails, then to either email_summarizer_agent if a summary is requested or event_scheduler_agent if an event needs to be scheduled.
 
-# def music_assistant(state: State, config: RunnableConfig): 
+You must only use the subagents in the following orders: 
+inbox_reader_agent -> email_summarizer_agent -> event_scheduler_agent
+inbox_reader_agent -> event_scheduler_agent
+You must not use the agents in any other order.
 
-#     # Fetch long-term memory (user preferences) from the state.
-#     # If `loaded_memory` is not present in the state, default to "None".
-#     memory = "None" 
-#     if "loaded_memory" in state: 
-#         memory = state["loaded_memory"]
+You must only ask the inbox_reader_agent to fetch or search for emails and nothing else.
+You must only ask the email_summarizer_agent to summarize emails and nothing else.
+You must only ask the event_scheduler_agent to schedule events and nothing else.
+If something is not possible or lacking detail, explain why in as much detail as possible to the user.
+"""
 
-#     # Generate the system prompt for the music assistant, injecting the loaded memory.
-#     music_assistant_prompt = generate_music_assistant_prompt(memory)
-
-#     # Invoke the LLM (`llm_with_music_tools`) with the system prompt and the current message history.
-#     # The LLM will decide whether to call a tool or generate a final response.
-#     response = llm_with_music_tools.invoke([SystemMessage(music_assistant_prompt)] + state["messages"])
-    
-#     # Update the state by appending the LLM's response to the `messages` list.
-#     # The `add_messages` annotation in `State` ensures this is appended correctly.
-#     return {"messages": [response]}
 
 #define subagents
 inbox_reader_agent = create_react_agent(
@@ -149,10 +189,20 @@ summarizer_agent = create_react_agent(
     store=in_memory_store         # The in-memory store for long-term user data
 )
 
+event_scheduler_agent = create_react_agent(
+    llm,                          # The language model to use for reasoning
+    tools=[schedule_google_calendar_event, check_google_calendar_availability],       # The list of tools available to this agent
+    name="event_scheduler_agent",    # A unique name for this agent within the graph
+    prompt=event_scheduler_agent_prompt, # The system prompt for this agent's persona and instructions
+    state_schema=State,           # The shared state schema for the graph
+    checkpointer=checkpointer,    # The checkpointer for short-term (thread-level) memory
+    store=in_memory_store         # The in-memory store for long-term user data
+)
+
 
 # Create the supervisor after subagents are defined
 supervisor_prebuilt_workflow = create_supervisor(
-    agents=[inbox_reader_agent, summarizer_agent],      # Both agents are available
+    agents=[inbox_reader_agent, summarizer_agent, event_scheduler_agent],      # Both agents are available
     output_mode="last_message",       # Output only the last message from the routed agent
     model=llm,                        # The LLM to act as the supervisor
     prompt=supervisor_prompt,         # The system prompt guiding the supervisor's behavior
@@ -168,26 +218,43 @@ if __name__ == "__main__":
     show_graph(supervisor_prebuilt)
 
     sample_prompts = [
-        "Please get me 5 emails about meetings and summarize them in 5 bullet points.",
+        "Please get me 5 emails about meetings and summarize them in 5 bullet points.", #recursion limit
         "Show me the most recent 2 emails from my inbox and summarize them.",
         "Summarize my unread emails in 4 bullet points.",
         "Get the last 3 emails about project updates.",
         "Give me a summary of my emails mentioning 'invoice'.",
         "Fetch my most recent email.",
-        "Summarize my inbox.",
+        "Summarize my inbox.", #recursion limit
         "Fetch me my emails from computer science and summarize them in 3 bullet points.",
-        "What are the key points from my last 5 emails?",
-        "List my recent emails about deadlines."
+        "What are the key points from my last 3 emails?",
+        "List my recent emails about deadlines.",
+        "Fetch and give me a summary of emails between June 1 and June 10 about scheduling."
     ]    
 
+    # Sample prompts that will use the event_scheduler_agent
+    event_scheduler_prompts = [
+        "Schedule a meeting with John tomorrow at 2pm.",
+        "Set up a project discussion for next week.",
+        "Create a calendar event for my team on Friday at 10am.",
+        "Schedule an event for next Monday about the budget review.",
+        "Arrange a call with Alice and Bob this Thursday afternoon.",
+        "Book a meeting for me and my manager next Wednesday.",
+        "Set up a 1-hour meeting with the product team next week.",
+        "Schedule a follow-up event based on my recent emails.",
+        "Create a Google Calendar event for my project kickoff.",
+        "Find a time to meet with Sarah and schedule it on my calendar."
+    ]
+  
     thread_id = uuid.uuid4() # Generate a fresh thread ID for this conversation.
 
-    config = {"configurable": {"thread_id": thread_id}, "recursion_limit": 10}
+    config = {"configurable": {"thread_id": thread_id}, "recursion_limit": 10, "verbose": True}
 
     # Configure the invocation with the thread ID.
     # config = {"configurable": {"thread_id": thread_id}}
     # The supervisor agent expects a state input
-    result = supervisor_prebuilt.invoke({"messages": [HumanMessage(content=sample_prompts[0])]}, config=config)
+    # result = supervisor_prebuilt.invoke({"messages": [HumanMessage(content=sample_prompts[10])]}, config=config)
+    result = supervisor_prebuilt.invoke({"messages": [HumanMessage(content=event_scheduler_prompts[0])]}, config=config)
+
     print("Agent output:")
     for message in result["messages"]:
         message.pretty_print()
