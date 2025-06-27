@@ -5,7 +5,40 @@ import { Send, Mail, Calendar, Bot, FileText, Clock, Check, AlertCircle } from '
 const EmailAssistantDashboard = () => {
   const [prompt, setPrompt] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [logs, setLogs] = useState([]);
   const [activeTab, setActiveTab] = useState('summaries');
+
+  const [agentLogs, setAgentLogs] = useState([
+    { id: 1, timestamp: "14:32:15", action: "Fetching emails from inbox", status: "completed" },
+    { id: 2, timestamp: "14:32:18", action: "Analyzing email content for invoices", status: "completed" },
+    { id: 3, timestamp: "14:32:22", action: "Generating summary for 5 emails", status: "completed" },
+    { id: 4, timestamp: "14:32:28", action: "Creating draft responses", status: "completed" },
+    { id: 5, timestamp: "14:32:30", action: "Scheduling calendar events", status: "completed" }
+  ]);
+
+
+  const handleSubmit = async () => {
+    setIsProcessing(true);
+    const res = await fetch("http://localhost:5000/agent", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ prompt })
+    });
+
+    const data = await res.json();
+    console.log("Response from server:", data);
+    setIsProcessing(false);
+    if (data.response){
+      setAgentLogs([...agentLogs, ...data.response]);
+      console.log("Logs2 updated:", agentLogs);
+    } else {
+      alert(data.error || "Something went wrong");
+    }
+  };
+
+
 
   // Mock data for demonstration
   const [emailSummaries] = useState([
@@ -44,13 +77,8 @@ const EmailAssistantDashboard = () => {
     }
   ]);
 
-  const [agentLogs] = useState([
-    { id: 1, timestamp: "14:32:15", action: "Fetching emails from inbox", status: "completed" },
-    { id: 2, timestamp: "14:32:18", action: "Analyzing email content for invoices", status: "completed" },
-    { id: 3, timestamp: "14:32:22", action: "Generating summary for 5 emails", status: "completed" },
-    { id: 4, timestamp: "14:32:28", action: "Creating draft responses", status: "in-progress" },
-    { id: 5, timestamp: "14:32:30", action: "Scheduling calendar events", status: "pending" }
-  ]);
+  
+  
 
   const [calendarEvents] = useState([
     {
@@ -73,15 +101,15 @@ const EmailAssistantDashboard = () => {
     }
   ]);
 
-  const handleSubmit = () => {
-    if (!prompt.trim()) return;
+  // const handleSubmit = () => {
+  //   if (!prompt.trim()) return;
     
-    setIsProcessing(true);
-    // Simulate processing
-    setTimeout(() => {
-      setIsProcessing(false);
-    }, 3000);
-  };
+  //   setIsProcessing(true);
+  //   // Simulate processing
+  //   setTimeout(() => {
+  //     setIsProcessing(false);
+  //   }, 3000);
+  // };
 
   const TabButton = ({ id, label, icon: Icon, isActive, onClick }) => (
     <button
@@ -162,19 +190,19 @@ const EmailAssistantDashboard = () => {
         </div>
 
         {/* Navigation Tabs */}
-        <div className="flex gap-2 bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-2">
-          <TabButton id="summaries" label="Email Summaries" icon={Mail} isActive={activeTab === 'summaries'} onClick={setActiveTab} />
-          <TabButton id="responses" label="Draft Responses" icon={FileText} isActive={activeTab === 'responses'} onClick={setActiveTab} />
-          <TabButton id="logs" label="Agent Logs" icon={Bot} isActive={activeTab === 'logs'} onClick={setActiveTab} />
-          <TabButton id="calendar" label="Calendar Events" icon={Calendar} isActive={activeTab === 'calendar'} onClick={setActiveTab} />
-        </div>
+          <div className="flex justify-center gap-2 bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-2">
+            <TabButton id="summaries" label="Email Summaries" icon={Mail} isActive={activeTab === 'summaries'} onClick={setActiveTab} />
+            <TabButton id="responses" label="Draft Responses" icon={FileText} isActive={activeTab === 'responses'} onClick={setActiveTab} />
+            <TabButton id="logs" label="Agent Logs" icon={Bot} isActive={activeTab === 'logs'} onClick={setActiveTab} />
+            <TabButton id="calendar" label="Calendar Events" icon={Calendar} isActive={activeTab === 'calendar'} onClick={setActiveTab} />
+          </div>
 
-        {/* Content Area */}
+          {/* Content Area */}
         <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-6 min-h-[400px]">
           {activeTab === 'summaries' && (
             <div className="space-y-4">
               <h2 className="text-xl font-light mb-4">Email Summaries</h2>
-              {emailSummaries.map((email) => (
+              {[...emailSummaries].reverse().map((email) => (
                 <div key={email.id} className="bg-white/5 border border-white/10 rounded-xl p-4 space-y-3">
                   <div className="flex justify-between items-start">
                     <div className="space-y-1">
@@ -195,7 +223,7 @@ const EmailAssistantDashboard = () => {
           {activeTab === 'responses' && (
             <div className="space-y-4">
               <h2 className="text-xl font-light mb-4">Draft Responses</h2>
-              {draftResponses.map((response) => (
+              {[...draftResponses].reverse().map((response) => (
                 <div key={response.id} className="bg-white/5 border border-white/10 rounded-xl p-4 space-y-3">
                   <div className="flex justify-between items-start">
                     <div className="space-y-1">
@@ -226,7 +254,7 @@ const EmailAssistantDashboard = () => {
             <div className="space-y-4">
               <h2 className="text-xl font-light mb-4">Agent Activity Logs</h2>
               <div className="space-y-2">
-                {agentLogs.map((log) => (
+                {[...agentLogs].reverse().map((log) => (
                   <div key={log.id} className="flex items-center gap-3 bg-white/5 border border-white/10 rounded-lg p-3">
                     <StatusIcon status={log.status} />
                     <span className="text-xs text-gray-400 font-mono w-16">{log.timestamp}</span>
@@ -247,7 +275,7 @@ const EmailAssistantDashboard = () => {
           {activeTab === 'calendar' && (
             <div className="space-y-4">
               <h2 className="text-xl font-light mb-4">Calendar Events</h2>
-              {calendarEvents.map((event) => (
+              {[...calendarEvents].reverse().map((event) => (
                 <div key={event.id} className="bg-white/5 border border-white/10 rounded-xl p-4 space-y-3">
                   <div className="flex justify-between items-start">
                     <div className="space-y-1">

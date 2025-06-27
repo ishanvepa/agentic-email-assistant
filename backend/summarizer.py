@@ -1,5 +1,4 @@
 import os
-from typing import List
 from openai import OpenAI
 from dotenv import load_dotenv
 from langchain_core.tools import tool 
@@ -13,7 +12,7 @@ client = OpenAI(
 )
 
 @tool
-def summarize_emails(emails: List[dict], max_bullets: int = 5) -> List[str]:
+def summarize_emails(emails: (list[dict[str, str]]), max_bullets: int = 5) -> list[str]:
     """
     Summarizes a list of emails into concise bullet points.
     This tool is only to be called by the email_summarizer_agent.

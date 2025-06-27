@@ -1,0 +1,40 @@
+{
+    "sample_prompts": [
+        "Please get me 5 emails about meetings and summarize them in 5 bullet points.",
+        "Show me the most recent 2 emails from my inbox and summarize them.",
+        "Summarize my unread emails in 4 bullet points.",
+        "Get the last 3 emails about project updates.",
+        "Give me a summary of my emails mentioning 'invoice'.",
+        "Fetch my most recent email.",
+        "Summarize my inbox.",
+        "Fetch me my emails from computer science and summarize them in 3 bullet points.",
+        "What are the key points from my last 3 emails?",
+        "List my recent emails about deadlines.",
+        "Fetch and give me a summary of emails between June 1 and June 10 about scheduling."
+    ],
+    "event_scheduler_prompts": [
+        "Schedule a meeting with John tomorrow at 2pm.",
+        "Set up a project discussion for next week.",
+        "Create a calendar event for my team on Friday at 10am.",
+        "Schedule an event for next Monday about the budget review.",
+        "Arrange a call with Alice and Bob next Thursday afternoon.",
+        "Book a meeting for me and my manager next Wednesday.",
+        "Set up a 1-hour meeting with the product team next week.",
+        "Schedule a follow-up event based on my recent emails.",
+        "Create a Google Calendar event for my project kickoff.",
+        "Find a time to meet with Sarah and schedule it on my calendar."
+    ],
+    "email_event_prompts": [
+        "Fetch my emails about meetings this week and schedule a meeting based on them.",
+        "Get the latest emails mentioning project deadlines and set up a calendar event for the next review.",
+        "Find emails about interviews and schedule an interview event with the mentioned participants.",
+        "Summarize my recent email about SitScape onboarding and arrange a follow meeting accordingly.",
+        "Check emails about budget discussions and schedule a follow-up meeting.",
+        "Fetch emails from Alice about the workshop and create a calendar event for it.",
+        "Get emails mentioning 'demo' and schedule a demo session with the attendees.",
+        "Find emails about client calls and book a meeting with the clients.",
+        "Summarize emails about onboarding and set up an onboarding event.",
+        "Fetch emails about training sessions and schedule the next session on my calendar.",
+        "Find any emails that include event or meeting invitations and add them to my calendar"
+    ]
+}

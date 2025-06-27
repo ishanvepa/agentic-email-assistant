@@ -24,7 +24,7 @@ load_dotenv(override=True)
 
 # Initialize the ChatOpenAI model. We're using a specific model from Llama 3.3 series.
 # This `model` object will be used throughout the notebook for all LLM interactions.
-llm = ChatOpenAI(model_name="meta-llama/Llama-3.3-70B-Instruct", temperature=0, verbose=True)
+llm = ChatOpenAI(model_name="gpt-4.1-mini", temperature=0, verbose=True)
 
 
 # Initializing `InMemoryStore` for long-term memory.
@@ -103,6 +103,8 @@ After using the summarize_emails tool, present the results clearly with:
 
 Always respond with the email summary once generated. Do not ask follow-up questions unless there's an error or missing information.
 """
+# Get the current day of the week and its name
+day_name = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"][datetime.today().weekday()]
 
 event_scheduler_agent_prompt = f"""
 You are a specialized subagent responsible for scheduling events on the user's Google Calendar.
@@ -123,7 +125,7 @@ When scheduling an event, you must provide:
 
 EXPECTED INPUT:
 - You will receive requests like "schedule an event for next week", "set up a meeting with John tomorrow at 2pm", or "create a calendar event for my project discussion".
-- If the user asks a relative time like "next week" or "tomorrow", use {str(datetime.now())} as the current date and {str(date.today().day)} as the current day of the week as reference.
+- If the user asks a relative time like "next week" or "tomorrow", use {str(datetime.now())} as the current date and {day_name} as the current day of the week as reference.
 - You may also be given a list of emails and asked to schedule a meeting based on their content.
 
 IMPORTANT RULES:
@@ -154,6 +156,7 @@ The inbox_reader_agent can retrieve the last k emails from the user's inbox or s
 The email_summarizer_agent takes in a list of emails and summarizes their content into a list of bullet points.
 The event_scheduler_agent can schedule events on the user's Google Calendar based on requests or email content.
 For the event_scheduler_agent, if the user asks a relative time like "next week" or "tomorrow", use {str(datetime.now())} as the current date and {str(date.today().day)} as the current day of the week as reference.
+Additionally, always assume the timezone is {str(datetime.now().astimezone().tzname())}
 Use `inbox_reader_agent` when the user asks to "fetch", "show, or "list out" or something similar relating to retrieving emails.
 If the user asks for summarizing emails, route the query to the email_summarizer_agent to process the fetched emails from the inbox_reader_agent.
 
