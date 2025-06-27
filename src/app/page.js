@@ -1,12 +1,13 @@
 "use client"
 import React, { useState } from 'react';
-import { Send, Mail, Calendar, Bot, FileText, Clock, Check, AlertCircle } from 'lucide-react';
+import {Sparkles, Send, Mail, Calendar, Bot, FileText, Clock, Check, AlertCircle } from 'lucide-react';
 
 const EmailAssistantDashboard = () => {
   const [prompt, setPrompt] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [logs, setLogs] = useState([]);
   const [activeTab, setActiveTab] = useState('summaries');
+  const [summaries, setSummaries] = useState([]);
 
   const [agentLogs, setAgentLogs] = useState([
     { id: 1, timestamp: "14:32:15", action: "Fetching emails from inbox", status: "completed" },
@@ -114,7 +115,7 @@ const EmailAssistantDashboard = () => {
   const TabButton = ({ id, label, icon: Icon, isActive, onClick }) => (
     <button
       onClick={() => onClick(id)}
-      className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-200 ${
+      className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-200 cursor-pointer ${
         isActive 
           ? 'bg-white/10 text-blue-300 shadow-lg backdrop-blur-sm' 
           : 'text-gray-400 hover:text-gray-200 hover:bg-white/5'
@@ -172,7 +173,7 @@ const EmailAssistantDashboard = () => {
             <button
               onClick={handleSubmit}
               disabled={isProcessing || !prompt.trim()}
-              className="flex items-center gap-2 px-6 py-3 bg-blue-600/80 hover:bg-blue-600 disabled:bg-gray-600/50 rounded-xl transition-all duration-200 backdrop-blur-sm disabled:cursor-not-allowed"
+              className="flex items-center gap-2 px-6 py-3 bg-blue-600/80 hover:bg-blue-600 disabled:bg-gray-600/50 rounded-xl transition-all duration-200 backdrop-blur-sm disabled:cursor-not-allowed cursor-pointer"
             >
               {isProcessing ? (
                 <>
@@ -181,7 +182,7 @@ const EmailAssistantDashboard = () => {
                 </>
               ) : (
                 <>
-                  <Send size={16} />
+                  <Sparkles size={16} />
                   <span>Execute Task</span>
                 </>
               )}

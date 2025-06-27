@@ -74,6 +74,7 @@ def fetch_k_emails(k=5, query=None, after=None, before=None, unread_only=False):
         body = ''
         # Try to extract the body (plain text)
         payload = msg_data.get('payload', {})
+        
         if 'parts' in payload:
             for part in payload['parts']:
                 if part.get('mimeType') == 'text/plain':
@@ -83,6 +84,12 @@ def fetch_k_emails(k=5, query=None, after=None, before=None, unread_only=False):
         elif payload.get('mimeType') == 'text/plain':
             body_data = payload.get('body', {}).get('data', '')
             body = decode_base64url(body_data)
+        if not body:
+            try:
+                body_data = payload["parts"][0]["parts"][0]["body"]["data"]
+                body = decode_base64url(body_data)
+            except Exception as e:
+                print(f"Nested body extraction failed: {e}")
         date = next((h['value'] for h in headers if h['name'] == 'Date'), None)
         email_dict = {
             'subject': subject,
@@ -92,14 +99,14 @@ def fetch_k_emails(k=5, query=None, after=None, before=None, unread_only=False):
             'id': msg['id']
         }
         email_list.append(email_dict)
-        # print(f"\nEmail ID: {email_dict['id']}")
-        # print(f"From: {email_dict['sender']}")
-        # print(f"Subject: {email_dict['subject']}")
-        # print(f"Date: {email_dict['date']}")
-        # print(f"Body:\n{email_dict['body']}\n{'-'*40}")
+        print(f"\nEmail ID: {email_dict['id']}")
+        print(f"From: {email_dict['sender']}")
+        print(f"Subject: {email_dict['subject']}")
+        print(f"Date: {email_dict['date']}")
+        print(f"Body:\n{email_dict['body']}\n{'-'*40}")
     return {"emails": email_list}
 
 # if __name__ == '__main__':
 #     # service = authenticate_gmail()
 #     query = ['meeting', 'zoom', 'schedule', 'calendar', 'invite', 'appointment', 'availability', 'time to meet', 'set up a meeting', 'meeting request', 'meeting inquiry']
-#     fetch_k_emails(10, query[8], unread_only=False)
+#     fetch_k_emails(5, "welcome aboard!", unread_only=False)

@@ -1,0 +1,5 @@
+mail ID: {email_dict['id']}")
+        print(f"From: {email_dict['sender']}")
+        print(f"Subject: {email_dict['subject']}")
+        print(f"Date: {email_dict['date']}")
+        print(f"Body:\n{email_dict['body']}\n{'-'*40}")
