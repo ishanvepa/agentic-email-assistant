@@ -23,17 +23,20 @@ def summarize_emails(emails: (list[dict[str, str]]), max_bullets: int = 5) -> st
     Returns:
         str: A string of summarized bullet points, each representing key point(s) from the emails.
     """
+    print("Summarizing emails...")
+    print(str(emails))
     combined_text = "\n\n".join(
         f"Subject: {email.get('subject', '')}\nSender: {email.get('sender', '')}\nDate: {email.get('date', '')}\nBody: {email.get('body', '')}"
         for email in emails
     )
+    print("Combined text for summarization:" + str(combined_text))
     prompt = (
         "Summarize the following emails into concise bullet points:\n\n"
         f"{combined_text}\n\nBullet points:"
     )
 
     response = client.chat.completions.create(
-        model="meta-llama/Llama-3.3-70B-Instruct",
+        model="gpt-4.1-mini",
         messages=[
             {
                 "role": "system",
@@ -45,8 +48,8 @@ def summarize_emails(emails: (list[dict[str, str]]), max_bullets: int = 5) -> st
             }
         ]
     )
-    summary_text = response.choices[0].message.content
-    # print(summary_text)
+    summary_text = response.choices[0].message.content or ""
+    print("Summary text:" + str(summary_text))
     # bullets = [line.strip('- ').strip() for line in summary_text.split('\n') if line.strip().startswith('-')]
     # return [f"- {b}" for b in bullets][:max_bullets]
     return summary_text

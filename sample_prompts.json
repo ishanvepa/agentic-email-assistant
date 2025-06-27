@@ -7,19 +7,19 @@
         "Give me a summary of my emails mentioning 'invoice'.",
         "Fetch my most recent email.",
         "Summarize my inbox.",
-        "Fetch me my emails from computer science and summarize them in 3 bullet points.",
+        "Fetch me my emails from computer science jobs and summarize them in 3 bullet points.",//
         "What are the key points from my last 3 emails?",
         "List my recent emails about deadlines.",
         "Fetch and give me a summary of emails between June 1 and June 10 about scheduling."
     ],
     "event_scheduler_prompts": [
-        "Summarize my emails regarding Sitscape from the past month and schedule a meeting about Friday Demo with John tomorrow at 10:30am.",
-        "Fetch my email regarding my upcoming flight itinerary and schedule a meeting with Daniel Nedialkov to discuss transportation logistics.",
-        "Create a calendar event for my team on Friday at 10am.",
-        "Schedule an event for next Monday about the budget review.",
-        "Arrange a call with Alice and Bob next Thursday afternoon.",
-        "Summarize my recent email about SitScape onboarding and arrange a follow up meeting next wednesday with Brandee about fixing HR documentation.",
-        "Set up a 1-hour meeting with the product team next week.",
+        "Summarize my emails regarding Sitscape from the past month and schedule a meeting about Friday Demo with John tomorrow at 10:30am.",//
+        "Summarize my 5 emails about meetings with IEEE or SitScape",//
+        "Summarize my recent email about SitScape onboarding and arrange a follow up meeting next wednesday with Adam about HR documentation.",//
+        "Check emails with Leo Mendez and set up a meeting at my next available time if he has any questions regarding the notion plugin.",//
+        "Summarize any emails I have about invoices, if i get any from Emily Tan then set a reminder event next week with the team involved to handle the details of any invoice.",
+        "Do I have any flights from tallahassee coming up? If so, set an event reminder a day before the flight with the time in the title.",//
+        "Summarize emails from the past 7 days about payments. If there's one from clear charge billing, create a calendar event next Monday to review it with finance.",
         "Schedule a follow-up event based on my recent emails.",
         "Create a Google Calendar event for my project kickoff.",
         "Find a time to meet with Sarah and schedule it on my calendar."

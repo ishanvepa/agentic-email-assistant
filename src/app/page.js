@@ -53,11 +53,11 @@ const EmailAssistantDashboard = () => {
   
 
   const [agentLogs, setAgentLogs] = useState([
-    { id: 1, timestamp: "14:32:15", action: "Fetching emails from inbox", status: "completed" },
-    { id: 2, timestamp: "14:32:18", action: "Analyzing email content for invoices", status: "completed" },
-    { id: 3, timestamp: "14:32:22", action: "Generating summary for 5 emails", status: "completed" },
-    { id: 4, timestamp: "14:32:28", action: "Creating draft responses", status: "completed" },
-    { id: 5, timestamp: "14:32:30", action: "Scheduling calendar events", status: "completed" }
+    { id: 1, timestamp: "3:02 pm", action: "Fetching emails from inbox", status: "completed" },
+    { id: 2, timestamp: "3:05 pm", action: "Analyzing email content for invoices", status: "completed" },
+    { id: 3, timestamp: "3:08 pm", action: "Generating summary for 5 emails", status: "completed" },
+    { id: 4, timestamp: "3:12 pm", action: "Creating draft responses", status: "completed" },
+    { id: 5, timestamp: "3:15 pm", action: "Scheduling calendar events", status: "completed" }
   ]);
 
 
@@ -215,7 +215,7 @@ const EmailAssistantDashboard = () => {
         {/* Navigation Tabs */}
           <div className="flex justify-center gap-2 bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-2">
             <TabButton id="summaries" label="Email Summaries" icon={Mail} isActive={activeTab === 'summaries'} onClick={setActiveTab} />
-            <TabButton id="responses" label="Draft Responses" icon={FileText} isActive={activeTab === 'responses'} onClick={setActiveTab} />
+            {/* <TabButton id="responses" label="Draft Responses" icon={FileText} isActive={activeTab === 'responses'} onClick={setActiveTab} /> */}
             <TabButton id="logs" label="Agent Logs" icon={Bot} isActive={activeTab === 'logs'} onClick={setActiveTab} />
             <TabButton id="calendar" label="Calendar Events" icon={Calendar} isActive={activeTab === 'calendar'} onClick={setActiveTab} />
           </div>
@@ -268,7 +268,15 @@ const EmailAssistantDashboard = () => {
 
           {activeTab === 'logs' && (
             <div className="space-y-4">
-              <h2 className="text-xl font-light mb-4">Agent Activity Logs</h2>
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-light">Agent Activity Logs</h2>
+                <button
+                  onClick={() => setAgentLogs([])}
+                  className="px-4 py-2 bg-red-800/80 hover:bg-red-800 text-white text-xs rounded-lg transition-colors hover:cursor-pointer"
+                >
+                  Clear Logs
+                </button>
+              </div>
               <div className="space-y-2">
                 {[...agentLogs].reverse().map((log) => (
                   <div key={log.id} className="flex items-center gap-3 bg-white/5 border border-white/10 rounded-lg p-3">

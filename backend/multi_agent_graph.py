@@ -51,15 +51,16 @@ IMPORTANT RULES:
 2. When asked for emails, extract the number of emails (k) and any keywords from the request
 3. If no number of emails is specified, default to 5 emails
 4. If no keywords are given, fetch the most recent emails
-5. If no date range is specified, fetch the most recent emails
-6. If no unread status is specified, fetch all emails
-7. ONLY call the fetch_k_emails tool ONCE per user request
-8. You may receive requests like "fetch my emails about meetings", "summarize my emails mentioning invoices", or "give me key points from my recent emails".
+5. If no date range is specified, fetch emails only with the keywords provided, do not use a date range
+6. If no keywords and no date range is specified, fetch the most recent emails
+7. If no unread status is specified, fetch all emails
+8. ONLY call the fetch_k_emails tool ONCE per user request
+9. You may receive requests like "fetch my emails about meetings", "summarize my emails mentioning invoices", or "give me key points from my recent emails".
 You are to query the topics mentioned in the request to fetch the relevant emails.
-9. If the user provides a month and day but a year is not given, default to the current year
-10. After calling the tool and receiving results, DO NOT call the tool again
-11. If you cannot find any emails, inform the user politely and explain why
-12. If a date range is provided without a year, default to the year {datetime.now().year}
+10. If the user provides a month and day but a year is not given, default to the current year
+11. After calling the tool and receiving results, DO NOT call the tool again
+12. If you cannot find any emails, inform the user politely and explain why
+13. If a date range is provided without a year, default to the year {datetime.now().year}
 
 if you receive a request requiring fetching and summarizing, just fetch the emails and let the email_summarizer_agent handle the summarization.
 
@@ -91,15 +92,16 @@ IMPORTANT RULES:
 5. Focus on the most important and actionable information from the emails
 
 EXPECTED INPUT:
-- You will receive requests like "summarize these emails", "give me bullet points of my emails", "what are the key points from my inbox" 
+- You will receive requests with a list of emails saying like "summarize these emails", "give me bullet points of my emails", "what are the key points from my inbox" 
 - The user may specify a number of bullet points they want (e.g., "give me 3 key points")
 - If the user does not specify a number, default to 5 bullet points
 
 RESPONSE FORMAT:
-After using the summarize_emails tool, present the results clearly with:
-- A brief introduction (e.g., "Here's a summary of your emails:")
-- The bullet points returned by the tool
-- Any relevant context about what was summarized
+Strictly follow these terms for the response format:
+After using the summarize_emails tool, present the results clearly as a json formatted string with:
+- A field populated with "summary" to indicate the type of response
+- The email information (Sender, subject, date)
+- The bullet points returned by the tool corresponding to the email information
 
 Always respond with the email summary once generated. Do not ask follow-up questions unless there's an error or missing information.
 """
@@ -170,6 +172,9 @@ You must only use the subagents in the following orders:
 inbox_reader_agent -> email_summarizer_agent -> event_scheduler_agent
 inbox_reader_agent -> event_scheduler_agent
  
+If summarization is requested, you must extract the returned emails from the `inbox_reader_agent`'s tool output and pass them to the `email_summarizer_agent`.
+Include the exact email data as input to the summarizer. Do not ask the user for it again.
+
 You must not use the agents in any other order.
 
 You must only ask the inbox_reader_agent to fetch or search for emails and nothing else.
