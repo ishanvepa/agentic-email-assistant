@@ -12,7 +12,7 @@ client = OpenAI(
 )
 
 @tool
-def summarize_emails(emails: (list[dict[str, str]]), max_bullets: int = 5) -> list[str]:
+def summarize_emails(emails: (list[dict[str, str]]), max_bullets: int = 5) -> str:
     """
     Summarizes a list of emails into concise bullet points.
     This tool is only to be called by the email_summarizer_agent.
@@ -21,7 +21,7 @@ def summarize_emails(emails: (list[dict[str, str]]), max_bullets: int = 5) -> li
         emails (list[dict[str, str]]): A list of email dictionaries, each containing keys such as 'subject', 'sender', 'date', 'body', and 'id'.
         max_bullets (int, optional): The maximum number of bullet points to return based on what the user wants. If none specified, then defaults to 5.
     Returns:
-        List[str]: A list of summarized bullet points (as strings), each representing key point(s) from the emails.
+        str: A string of summarized bullet points, each representing key point(s) from the emails.
     """
     combined_text = "\n\n".join(
         f"Subject: {email.get('subject', '')}\nSender: {email.get('sender', '')}\nDate: {email.get('date', '')}\nBody: {email.get('body', '')}"
@@ -47,8 +47,9 @@ def summarize_emails(emails: (list[dict[str, str]]), max_bullets: int = 5) -> li
     )
     summary_text = response.choices[0].message.content
     # print(summary_text)
-    bullets = [line.strip('- ').strip() for line in summary_text.split('\n') if line.strip().startswith('-')]
-    return [f"- {b}" for b in bullets][:max_bullets]
+    # bullets = [line.strip('- ').strip() for line in summary_text.split('\n') if line.strip().startswith('-')]
+    # return [f"- {b}" for b in bullets][:max_bullets]
+    return summary_text
 
 # Example usage:
 # if __name__ == "__main__":

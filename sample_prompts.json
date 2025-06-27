@@ -13,7 +13,7 @@
         "Fetch and give me a summary of emails between June 1 and June 10 about scheduling."
     ],
     "event_scheduler_prompts": [
-        "Schedule a meeting with John tomorrow at 2pm.",
+        "Summarize my emails regarding Sitscape from the past month and schedule a meeting about Friday Demo with John tomorrow at 10:30am.",
         "Fetch my email regarding my upcoming flight itinerary and schedule a meeting with Daniel Nedialkov to discuss transportation logistics.",
         "Create a calendar event for my team on Friday at 10am.",
         "Schedule an event for next Monday about the budget review.",

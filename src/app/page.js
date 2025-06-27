@@ -9,6 +9,49 @@ const EmailAssistantDashboard = () => {
   const [activeTab, setActiveTab] = useState('summaries');
   const [summaries, setSummaries] = useState([]);
 
+    const [calendarEvents, setCalendarEvents] = useState([
+    {
+      id: 1,
+      title: "Q3 Planning Meeting",
+      date: "2025-07-02",
+      time: "14:00",
+      attendees: ["sarah@company.com"],
+      source: "Email parsing",
+      status: "scheduled"
+    },
+    {
+      id: 2,
+      title: "Invoice Payment Deadline",
+      date: "2025-07-01",
+      time: "09:00",
+      attendees: [],
+      source: "Email parsing",
+      status: "reminder"
+    }
+  ]);
+
+   // Mock data for demonstration
+  const [emailSummaries] = useState([
+    {
+      id: 1,
+      subject: "Invoice #2024-001 Payment Reminder",
+      sender: "accounts@techcorp.com",
+      summary: "Payment reminder for outstanding invoice of $2,450 due within 7 days.",
+      priority: "high",
+      date: "2025-06-25"
+    },
+    {
+      id: 2,
+      subject: "Meeting Request - Q3 Planning",
+      sender: "sarah@company.com",
+      summary: "Request to schedule Q3 planning meeting for next week, suggested times included.",
+      priority: "medium",
+      date: "2025-06-24"
+    }
+  ]);
+
+  
+
   const [agentLogs, setAgentLogs] = useState([
     { id: 1, timestamp: "14:32:15", action: "Fetching emails from inbox", status: "completed" },
     { id: 2, timestamp: "14:32:18", action: "Analyzing email content for invoices", status: "completed" },
@@ -32,8 +75,28 @@ const EmailAssistantDashboard = () => {
     console.log("Response from server:", data);
     setIsProcessing(false);
     if (data.response){
-      setAgentLogs([...agentLogs, ...data.response]);
-      console.log("Logs2 updated:", agentLogs);
+      const filteredLogs = data.response.filter(log => log.action && log.action.trim() !== "");
+      const updatedAgentLogs = [...agentLogs, ...filteredLogs];
+      setAgentLogs(updatedAgentLogs);
+
+      // Broaden filter to include both 'summarize' and 'summary'
+      const summaryActions = updatedAgentLogs
+        .filter(log => log.action && (
+          log.action.toLowerCase().includes("summary") ||
+          log.action.toLowerCase().includes("summarize")
+        ))
+        .map(log => ({ id: log.id, action: log.action }));
+      setSummaries(summaryActions);
+
+      // Filter for calendar events with the word 'scheduled'
+      const scheduledEvents = updatedAgentLogs
+        .filter(log => log.action && log.action.toLowerCase().includes("scheduled"))
+        .map(log => ({ id: log.id, action: log.action }));
+      setCalendarEvents(scheduledEvents);
+
+      console.log("Logs2 updated:", updatedAgentLogs);
+      console.log("Summaries updated:", summaryActions); // log the array directly
+      console.log("Calendar Events updated:", scheduledEvents);
     } else {
       alert(data.error || "Something went wrong");
     }
@@ -41,25 +104,7 @@ const EmailAssistantDashboard = () => {
 
 
 
-  // Mock data for demonstration
-  const [emailSummaries] = useState([
-    {
-      id: 1,
-      subject: "Invoice #2024-001 Payment Reminder",
-      sender: "accounts@techcorp.com",
-      summary: "Payment reminder for outstanding invoice of $2,450 due within 7 days.",
-      priority: "high",
-      date: "2025-06-25"
-    },
-    {
-      id: 2,
-      subject: "Meeting Request - Q3 Planning",
-      sender: "sarah@company.com",
-      summary: "Request to schedule Q3 planning meeting for next week, suggested times included.",
-      priority: "medium",
-      date: "2025-06-24"
-    }
-  ]);
+ 
 
   const [draftResponses] = useState([
     {
@@ -79,29 +124,6 @@ const EmailAssistantDashboard = () => {
   ]);
 
   
-  
-
-  const [calendarEvents] = useState([
-    {
-      id: 1,
-      title: "Q3 Planning Meeting",
-      date: "2025-07-02",
-      time: "14:00",
-      attendees: ["sarah@company.com"],
-      source: "Email parsing",
-      status: "scheduled"
-    },
-    {
-      id: 2,
-      title: "Invoice Payment Deadline",
-      date: "2025-07-01",
-      time: "09:00",
-      attendees: [],
-      source: "Email parsing",
-      status: "reminder"
-    }
-  ]);
-
   // const handleSubmit = () => {
   //   if (!prompt.trim()) return;
     
@@ -203,19 +225,12 @@ const EmailAssistantDashboard = () => {
           {activeTab === 'summaries' && (
             <div className="space-y-4">
               <h2 className="text-xl font-light mb-4">Email Summaries</h2>
-              {[...emailSummaries].reverse().map((email) => (
+              {[...summaries].reverse().map((email) => (
                 <div key={email.id} className="bg-white/5 border border-white/10 rounded-xl p-4 space-y-3">
-                  <div className="flex justify-between items-start">
-                    <div className="space-y-1">
-                      <h3 className="font-medium text-gray-200">{email.subject}</h3>
-                      <p className="text-sm text-gray-400">From: {email.sender}</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <PriorityBadge priority={email.priority} />
-                      <span className="text-xs text-gray-500">{email.date}</span>
-                    </div>
+                  <div className="flex items-center gap-4">
+                    <span className="text-xs text-gray-500 font-mono">ID: {email.id}</span>
+                    <p className="text-gray-300 text-sm leading-relaxed flex-1">{email.action}</p>
                   </div>
-                  <p className="text-gray-300 text-sm leading-relaxed">{email.summary}</p>
                 </div>
               ))}
             </div>
@@ -278,23 +293,9 @@ const EmailAssistantDashboard = () => {
               <h2 className="text-xl font-light mb-4">Calendar Events</h2>
               {[...calendarEvents].reverse().map((event) => (
                 <div key={event.id} className="bg-white/5 border border-white/10 rounded-xl p-4 space-y-3">
-                  <div className="flex justify-between items-start">
-                    <div className="space-y-1">
-                      <h3 className="font-medium text-gray-200">{event.title}</h3>
-                      <p className="text-sm text-gray-400">{event.date} at {event.time}</p>
-                      {event.attendees.length > 0 && (
-                        <p className="text-sm text-gray-400">Attendees: {event.attendees.join(', ')}</p>
-                      )}
-                    </div>
-                    <div className="flex flex-col items-end gap-2">
-                      <span className={`px-3 py-1 text-xs rounded-full border ${
-                        event.status === 'scheduled' ? 'bg-blue-500/20 text-blue-300 border-blue-500/30' :
-                        'bg-orange-500/20 text-orange-300 border-orange-500/30'
-                      }`}>
-                        {event.status}
-                      </span>
-                      <span className="text-xs text-gray-500">Source: {event.source}</span>
-                    </div>
+                  <div className="flex items-center gap-4">
+                    <span className="text-xs text-gray-500 font-mono">ID: {event.id}</span>
+                    <p className="text-gray-300 text-sm leading-relaxed flex-1">{event.action}</p>
                   </div>
                 </div>
               ))}
