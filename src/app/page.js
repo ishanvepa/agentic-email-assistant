@@ -79,13 +79,25 @@ const EmailAssistantDashboard = () => {
       const updatedAgentLogs = [...agentLogs, ...filteredLogs];
       setAgentLogs(updatedAgentLogs);
 
-      // Broaden filter to include both 'summarize' and 'summary'
-      const summaryActions = updatedAgentLogs
-        .filter(log => log.action && (
-          log.action.toLowerCase().includes("summary") ||
-          log.action.toLowerCase().includes("summarize")
-        ))
-        .map(log => ({ id: log.id, action: log.action }));
+      // Broaden filter to include both 'summarize' and 'summary', and parse JSON if present
+      const summaryActions = [];
+      updatedAgentLogs.forEach(log => {
+        if (log.action && (log.action.toLowerCase().includes("summary") || log.action.toLowerCase().includes("summarize"))) {
+          // Try to parse as JSON if it looks like a JSON string
+          try {
+            const parsed = JSON.parse(log.action);
+            if (parsed && parsed.type === "summary" && Array.isArray(parsed.emails)) {
+              summaryActions.push(...parsed.emails);
+            } else {
+              summaryActions.push({ id: log.id, action: log.action });
+            }
+          } catch (e) {
+            // Not JSON, just store as action
+            console.log("Failed to parse action as JSON:", e);
+            // summaryActions.push({ id: log.id, action: log.action });
+          }
+        }
+      });
       setSummaries(summaryActions);
 
       // Filter for calendar events with the word 'scheduled'
@@ -225,12 +237,23 @@ const EmailAssistantDashboard = () => {
           {activeTab === 'summaries' && (
             <div className="space-y-4">
               <h2 className="text-xl font-light mb-4">Email Summaries</h2>
-              {[...summaries].reverse().map((email) => (
-                <div key={email.id} className="bg-white/5 border border-white/10 rounded-xl p-4 space-y-3">
-                  <div className="flex items-center gap-4">
-                    <span className="text-xs text-gray-500 font-mono">ID: {email.id}</span>
-                    <p className="text-gray-300 text-sm leading-relaxed flex-1">{email.action}</p>
+              {[...summaries].reverse().map((email, idx) => (
+                <div key={email.id || idx} className="bg-white/5 border border-white/10 rounded-xl p-4 space-y-3">
+                  <div className="flex justify-between items-start">
+                    <div className="space-y-1">
+                      <h3 className="font-medium text-gray-200">{email.subject}</h3>
+                      <p className="text-sm text-gray-400">From: {email.sender}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <PriorityBadge priority={email.priority} />
+                      <span className="text-xs text-gray-500">{email.date}</span>
+                    </div>
                   </div>
+                  <ul className="text-gray-300 text-sm leading-relaxed list-disc ml-6">
+                    {Array.isArray(email.bullet_points) ? email.bullet_points.map((point, i) => (
+                      <li key={i}>{point}</li>
+                    )) : <li>{email.bullet_points}</li>}
+                  </ul>
                 </div>
               ))}
             </div>
@@ -301,9 +324,23 @@ const EmailAssistantDashboard = () => {
               <h2 className="text-xl font-light mb-4">Calendar Events</h2>
               {[...calendarEvents].reverse().map((event) => (
                 <div key={event.id} className="bg-white/5 border border-white/10 rounded-xl p-4 space-y-3">
-                  <div className="flex items-center gap-4">
-                    <span className="text-xs text-gray-500 font-mono">ID: {event.id}</span>
-                    <p className="text-gray-300 text-sm leading-relaxed flex-1">{event.action}</p>
+                  <div className="flex justify-between items-start">
+                    <div className="space-y-1">
+                      <h3 className="font-medium text-gray-200">{event.title}</h3>
+                      <p className="text-sm text-gray-400">{event.date} at {event.time}</p>
+                      {event.attendees.length > 0 && (
+                        <p className="text-sm text-gray-400">Attendees: {event.attendees.join(', ')}</p>
+                      )}More actions
+                    </div>
+                    <div className="flex flex-col items-end gap-2">
+                      <span className={`px-3 py-1 text-xs rounded-full border ${
+                        event.status === 'scheduled' ? 'bg-blue-500/20 text-blue-300 border-blue-500/30' :
+                        'bg-orange-500/20 text-orange-300 border-orange-500/30'
+                      }`}>
+                        {event.status}
+                      </span>
+                      <span className="text-xs text-gray-500">Source: {event.source}</span>
+                    </div>
                   </div>
                 </div>
               ))}
