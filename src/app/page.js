@@ -100,10 +100,25 @@ const EmailAssistantDashboard = () => {
       });
       setSummaries(summaryActions);
 
-      // Filter for calendar events with the word 'scheduled'
-      const scheduledEvents = updatedAgentLogs
-        .filter(log => log.action && log.action.toLowerCase().includes("scheduled"))
-        .map(log => ({ id: log.id, action: log.action }));
+      // Filter for calendar events with the word 'event' or 'type', parse JSON if present, and set status
+      const scheduledEvents = [];
+      updatedAgentLogs.forEach(log => {
+        if (log.action && (log.action.toLowerCase().includes("event") || log.action.toLowerCase().includes("type"))) {
+          try {
+            const parsed = JSON.parse(log.action);
+            if (parsed && parsed.type === "event" && Array.isArray(parsed.events)) {
+              // Add status: 'scheduled' to each event
+              scheduledEvents.push(...parsed.events.map(ev => ({ ...ev, status: 'scheduled' })));
+            } else {
+              scheduledEvents.push({ id: log.id, action: log.action, status: 'scheduled' });
+            }
+          } catch (e) {
+            // Not JSON, just store as action
+            console.log("Failed to parse action as JSON:", e);
+            // scheduledEvents.push({ id: log.id, action: log.action, status: 'scheduled' });
+          }
+        }
+      });
       setCalendarEvents(scheduledEvents);
 
       console.log("Logs2 updated:", updatedAgentLogs);
@@ -237,7 +252,7 @@ const EmailAssistantDashboard = () => {
           {activeTab === 'summaries' && (
             <div className="space-y-4">
               <h2 className="text-xl font-light mb-4">Email Summaries</h2>
-              {[...summaries].reverse().map((email, idx) => (
+              {[...summaries].map((email, idx) => (
                 <div key={email.id || idx} className="bg-white/5 border border-white/10 rounded-xl p-4 space-y-3">
                   <div className="flex justify-between items-start">
                     <div className="space-y-1">
@@ -322,15 +337,15 @@ const EmailAssistantDashboard = () => {
           {activeTab === 'calendar' && (
             <div className="space-y-4">
               <h2 className="text-xl font-light mb-4">Calendar Events</h2>
-              {[...calendarEvents].reverse().map((event) => (
-                <div key={event.id} className="bg-white/5 border border-white/10 rounded-xl p-4 space-y-3">
+              {[...calendarEvents].reverse().map((event, idx) => (
+                <div key={event.id || idx} className="bg-white/5 border border-white/10 rounded-xl p-4 space-y-3">
                   <div className="flex justify-between items-start">
                     <div className="space-y-1">
                       <h3 className="font-medium text-gray-200">{event.title}</h3>
-                      <p className="text-sm text-gray-400">{event.date} at {event.time}</p>
+                      <p className="text-sm text-gray-400">{event.date_time}</p>
                       {event.attendees.length > 0 && (
                         <p className="text-sm text-gray-400">Attendees: {event.attendees.join(', ')}</p>
-                      )}More actions
+                      )}
                     </div>
                     <div className="flex flex-col items-end gap-2">
                       <span className={`px-3 py-1 text-xs rounded-full border ${
@@ -339,7 +354,7 @@ const EmailAssistantDashboard = () => {
                       }`}>
                         {event.status}
                       </span>
-                      <span className="text-xs text-gray-500">Source: {event.source}</span>
+                      {/* <span className="text-xs text-gray-500">Source: {event.source}</span> */}
                     </div>
                   </div>
                 </div>

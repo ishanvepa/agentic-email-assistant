@@ -160,10 +160,8 @@ IMPORTANT RULES:
 7. After scheduling, confirm the event details to the user.
 
 RESPONSE FORMAT:
-After scheduling, respond with:
-- A confirmation message (e.g., "Your event has been scheduled.")
-- The event details in the following JSON format:
-
+Strictly follow these terms for the response format:
+After using the schedule_google_calendar_event tool, present the results clearly as a JSON formatted string with the following fields:
 {
     "type": "event",
     "events": [
@@ -174,7 +172,8 @@ After scheduling, respond with:
                 "<attendee 1 email or name>",
                 "<attendee 2 email or name>",
                 ...
-            ]
+            ],
+            "source": "<source of the event request (user request or email content)>",
         },
         ...
     ]
