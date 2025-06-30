@@ -22,7 +22,6 @@ def agent():
     config = {
         "configurable": {"thread_id": thread_id},
         "recursion_limit": 20,
-        "verbose": True
     }
 
     try:

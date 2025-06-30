@@ -24,7 +24,7 @@ load_dotenv(override=True)
 
 # Initialize the ChatOpenAI model. We're using a specific model from Llama 3.3 series.
 # This `model` object will be used throughout the notebook for all LLM interactions.
-llm = ChatOpenAI(model_name="gpt-4.1-mini", temperature=0, verbose=True)
+llm = ChatOpenAI(model_name="gpt-4.1-mini", temperature=0)
 
 
 # Initializing `InMemoryStore` for long-term memory.
